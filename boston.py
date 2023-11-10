@@ -18,10 +18,17 @@ import pandas as pd
 # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Energy - Paper looks to have used Heating Load only
-df = pd.read_excel('data//energy.xlsx')
+# df = pd.read_excel('data//energy.xlsx')
+# df.info()
+# X = df.drop(['Y1', 'Y2'], axis=1)
+# Y = df['Y1']  # Heating Load - Y1 (NLL is ~0.55, like paper); Cooling Load - Y2
+# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+
+## Yacht
+df = pd.read_csv('data//yacht.csv')
 df.info()
-X = df.drop(['Y1', 'Y2'], axis=1)
-Y = df['Y1']  # Heating Load - Y1 (NLL is ~0.55, like paper); Cooling Load - Y2
+X = df.drop(['Rr'], axis=1)
+Y = df['Rr']
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Power
