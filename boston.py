@@ -4,23 +4,33 @@ from sklearn.datasets import load_boston
 from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-
 import pandas as pd
 
-df = pd.read_excel('edited_Concrete_data.xls')
 
+## Concrete
+# df = pd.read_excel('edited_Concrete_data.xls')
+# df.info()
+# X = df.drop(['csMPa'], axis=1)
+# Y = df['csMPa']
+# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+
+## Power
+df = pd.read_excel('Power_data.xlsx')
 df.info()
-X = df.drop(['csMPa'], axis=1)
-Y = df['csMPa']
+X = df.drop(['PE'], axis=1)
+Y = df['PE']
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+
+## Boston
 # boston = load_boston()
+# X_train, X_test, Y_train, Y_test = train_test_split(boston.data, boston.target, test_size=0.2)
+
+## Wine
 # wine = fetch_ucirepo(id=186)
 # X = wine.data.features
 # Y = wine.data.targets
-
-
 # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
-# X_train, X_test, Y_train, Y_test = train_test_split(boston.data, boston.target, test_size=0.2)
+
 
 ngb = NGBRegressor().fit(X_train, Y_train)
 Y_preds = ngb.predict(X_test)
