@@ -1,10 +1,11 @@
 from ngboost import NGBRegressor
 
-from sklearn.datasets import load_boston
+#from sklearn.datasets import load_boston
 from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import pandas as pd
+import matplotlib.pyplot as plt
 
 ## Boston
 # boston = load_boston()
@@ -45,7 +46,10 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 
-ngb = NGBRegressor().fit(X_train, Y_train)
+ngb,val_loss_list = NGBRegressor().fit(X_train, Y_train, X_val = X_test, Y_val= Y_test)
+print(ngb.best_val_loss_itr)
+plt.plot(range(1, len(val_loss_list)+1), val_loss_list)
+plt.show()
 Y_preds = ngb.predict(X_test)
 Y_dists = ngb.pred_dist(X_test)
 
