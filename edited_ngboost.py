@@ -371,6 +371,7 @@ class NGBoost:
                 Y, sample_weight=val_sample_weight
             )  # NOQA
 
+        flag_breaked = 0
         for itr in range(len(self.col_idxs), self.n_estimators + len(self.col_idxs)):
             _, col_idx, X_batch, Y_batch, weight_batch, P_batch = self.sample(
                 X, Y, sample_weight, params
@@ -417,6 +418,7 @@ class NGBoost:
                         print(
                             f"== Best iteration / VAL{self.best_val_loss_itr} (val_loss={best_val_loss:.4f})"
                         )
+                    flag_breaked = 1
                     break
 
             if (
@@ -433,6 +435,74 @@ class NGBoost:
             if np.linalg.norm(proj_grad, axis=1).mean() < self.tol:
                 if self.verbose:
                     print(f"== Quitting at iteration / GRAD {itr}")
+                flag_breaked = 1
+                break
+        
+        while not flag_breaked and early_stopping_rounds:
+            itr += 1
+            _, col_idx, X_batch, Y_batch, weight_batch, P_batch = self.sample(
+                X, Y, sample_weight, params
+            )
+            self.col_idxs.append(col_idx)
+
+            D = self.Manifold(P_batch.T)
+
+            loss_list += [train_loss_monitor(D, Y_batch, weight_batch)]
+            loss = loss_list[-1]
+            grads = D.grad(Y_batch, natural=self.natural_gradient)
+
+            proj_grad = self.fit_base(X_batch, grads, weight_batch)
+            scale = self.line_search(proj_grad, P_batch, Y_batch, weight_batch)
+
+            # pdb.set_trace()
+            params -= (
+                self.learning_rate
+                * scale
+                * np.array([m.predict(X[:, col_idx]) for m in self.base_models[-1]]).T
+            )
+
+            val_loss = 0
+            if X_val is not None and Y_val is not None:
+                val_params -= (
+                    self.learning_rate
+                    * scale
+                    * np.array(
+                        [m.predict(X_val[:, col_idx]) for m in self.base_models[-1]]
+                    ).T
+                )
+                val_loss = val_loss_monitor(self.Manifold(val_params.T), Y_val)
+                val_loss_list += [val_loss]
+                if val_loss < best_val_loss:
+                    best_val_loss, self.best_val_loss_itr = val_loss, itr
+                if (
+                    early_stopping_rounds is not None
+                    and len(val_loss_list) > early_stopping_rounds
+                    and best_val_loss
+                    < np.min(np.array(val_loss_list[-early_stopping_rounds:]))
+                ):
+                    if self.verbose:
+                        print("== Early stopping achieved.")
+                        print(
+                            f"== Best iteration / VAL{self.best_val_loss_itr} (val_loss={best_val_loss:.4f})"
+                        )
+                    flag_breaked = 1
+                    break
+
+            if (
+                self.verbose
+                and int(self.verbose_eval) > 0
+                and itr % int(self.verbose_eval) == 0
+            ):
+                grad_norm = np.linalg.norm(grads, axis=1).mean() * scale
+                print(
+                    f"[iter {itr}] loss={loss:.4f} val_loss={val_loss:.4f} scale={scale:.4f} "
+                    f"norm={grad_norm:.4f}"
+                )
+
+            if np.linalg.norm(proj_grad, axis=1).mean() < self.tol:
+                if self.verbose:
+                    print(f"== Quitting at iteration / GRAD {itr}")
+                flag_breaked = 1
                 break
 
         self.evals_result = {}
@@ -441,6 +511,22 @@ class NGBoost:
         if X_val is not None and Y_val is not None:
             self.evals_result["val"] = {metric: val_loss_list}
         return self,val_loss_list
+
+    # def helper_itr(self, itr, 
+    #     X,
+    #     Y,
+    #     X_val,
+    #     Y_val,
+    #     sample_weight,
+    #     val_sample_weight,
+    #     train_loss_monitor,
+    #     val_loss_monitor,
+    #     early_stopping_rounds, params, loss_list, val_params):
+    #     _, col_idx, X_batch, Y_batch, weight_batch, P_batch = self.sample(
+    #         X, Y, sample_weight, params
+    #     )
+        
+        # return 1
 
     def set_params(self, **parameters):
         for parameter, value in parameters.items():
