@@ -1,15 +1,18 @@
 from ngboost import NGBRegressor
 
-#from sklearn.datasets import load_boston
 from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 ## Boston
-# boston = load_boston()
-# X_train, X_test, Y_train, Y_test = train_test_split(boston.data, boston.target, test_size=0.2)
+data_url = "http://lib.stat.cmu.edu/datasets/boston"
+raw_df = pd.read_csv(data_url, sep="\s+", skiprows=22, header=None)
+X = np.hstack([raw_df.values[::2, :], raw_df.values[1::2, :2]])  # data
+Y = raw_df.values[1::2, 2]  # target
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Concrete
 # df = pd.read_excel('data//concrete.xls')
@@ -49,6 +52,7 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 ngb,val_loss_list = NGBRegressor().fit(X_train, Y_train, X_val = X_test, Y_val= Y_test)
 print(ngb.best_val_loss_itr)
 plt.plot(range(1, len(val_loss_list)+1), val_loss_list)
+plt.plot(ngb.best_val_loss_itr, val_loss_list[ngb.best_val_loss_itr - 1], 'ro')
 plt.show()
 Y_preds = ngb.predict(X_test)
 Y_dists = ngb.pred_dist(X_test)
