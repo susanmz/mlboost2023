@@ -440,8 +440,7 @@ class NGBoost:
         self.evals_result["train"] = {metric: loss_list}
         if X_val is not None and Y_val is not None:
             self.evals_result["val"] = {metric: val_loss_list}
-
-        return self
+        return self,val_loss_list
 
     def set_params(self, **parameters):
         for parameter, value in parameters.items():
