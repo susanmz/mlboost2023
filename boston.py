@@ -13,7 +13,6 @@ import numpy as np
 # raw_df = pd.read_csv(data_url, sep="\s+", skiprows=22, header=None)
 # X = np.hstack([raw_df.values[::2, :], raw_df.values[1::2, :2]])  # data
 # Y = raw_df.values[1::2, 2]  # target
-# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Concrete
 # title = "Concrete"
@@ -29,7 +28,6 @@ import numpy as np
 # df.info()
 # X = df.drop(['Y1', 'Y2'], axis=1)
 # Y = df['Y1']  # Heating Load - Y1 (NLL is ~0.55, like paper); Cooling Load - Y2
-# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Yacht
 # title = "Yacht"
@@ -37,28 +35,28 @@ import numpy as np
 # df.info()
 # X = df.drop(['Rr'], axis=1)
 # Y = df['Rr']
-# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
 ## Power
-# title = "Power"
-# df = pd.read_excel('data//power.xlsx')
-# df.info()
-# X = df.drop(['PE'], axis=1)
-# Y = df['PE']
-# X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+title = "Power"
+df = pd.read_excel('data//power.xlsx')
+df.info()
+X = df.drop(['PE'], axis=1)
+Y = df['PE']
 
 ## Wine
-title = "Wine"
-wine = fetch_ucirepo(id=186)
-X = wine.data.features
-Y = wine.data.targets
-X_nottest, X_test, Y_nottest, Y_test = train_test_split(X, Y, test_size=0.1)
-X_train, X_val, Y_train, Y_val = train_test_split(X_nottest, Y_nottest, test_size=0.2)
+# title = "Wine"
+# wine = fetch_ucirepo(id=186)
+# X = wine.data.features
+# Y = wine.data.targets
 
 mse_arr = []
 nll_arr = []
 for i in range(10):
-    ngb,val_loss_list = NGBRegressor(n_estimators=50).fit(X_train, Y_train, X_val, Y_val, early_stopping_rounds=50)
+    X_nottest, X_test, Y_nottest, Y_test = train_test_split(X, Y, test_size=0.1)
+    X_train, X_val, Y_train, Y_val = train_test_split(X_nottest, Y_nottest, test_size=0.2)
+
+    ngb,val_loss_list = NGBRegressor(n_estimators=50).fit(X_train, Y_train, X_val, Y_val, early_stopping_rounds=1)
+    # ngb,val_loss_list = NGBRegressor(n_estimators=50).fit(X_train, Y_train, X_val, Y_val, early_stopping_rounds=50)
     # ngb,val_loss_list = NGBRegressor().fit(X_train, Y_train, X_val = X_test, Y_val= Y_test)
     print(ngb.best_val_loss_itr)
 
