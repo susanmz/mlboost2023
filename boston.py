@@ -4,24 +4,29 @@ from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from ngboost.scores import LogScore
+from matplotlib import pyplot as plt
+from early_stopping import earlyNGBRegressor
+from plot_loss import plotLoss
 
 ## Boston
-# title = "Boston"
-# data_url = "http://lib.stat.cmu.edu/datasets/boston"
-# raw_df = pd.read_csv(data_url, sep="\s+", skiprows=22, header=None)
-# X = np.hstack([raw_df.values[::2, :], raw_df.values[1::2, :2]])  # data
-# Y = raw_df.values[1::2, 2]  # target
+title = "Boston"
+data_url = "http://lib.stat.cmu.edu/datasets/boston"
+raw_df = pd.read_csv(data_url, sep="\s+", skiprows=22, header=None)
+X = np.hstack([raw_df.values[::2, :], raw_df.values[1::2, :2]])  # data
+Y = raw_df.values[1::2, 2]  # target
+iters = 1000
 
 ## Concrete
-title = "Concrete"
-df = pd.read_excel('.//data//concrete.xls')
-df.info()
-X = df.drop(['csMPa'], axis=1)
-Y = df['csMPa']
-
+# title = "Concrete"
+# df = pd.read_excel('.//data//concrete.xls')
+# df.info()
+# X = df.drop(['csMPa'], axis=1)
+# Y = df['csMPa']
+# X = X.to_numpy()
+# Y = Y.to_numpy()
+# iters = 1000
 
 ## Energy - Paper looks to have used Heating Load only
 # title = "Energy"
@@ -29,6 +34,9 @@ Y = df['csMPa']
 # df.info()
 # X = df.drop(['Y1', 'Y2'], axis=1)
 # Y = df['Y1']  # Heating Load - Y1 (NLL is ~0.55, like paper); Cooling Load - Y2
+# X = X.to_numpy()
+# Y = Y.to_numpy()
+# iters = 1000
 
 ## Yacht
 # title = "Yacht"
@@ -36,8 +44,9 @@ Y = df['csMPa']
 # df.info()
 # X = df.drop(['Rr'], axis=1)
 # Y = df['Rr']
-# X_nottest, X_test, Y_nottest, Y_test = train_test_split(X, Y, test_size=0.1)
-# X_train, X_val, Y_train, Y_val = train_test_split(X_nottest, Y_nottest, test_size=0.2)
+# X = X.to_numpy()
+# Y = Y.to_numpy()
+# iters = 1000
 
 
 ## Power
@@ -46,119 +55,82 @@ Y = df['csMPa']
 # df.info()
 # X = df.drop(['PE'], axis=1)
 # Y = df['PE']
-# X_nottest, X_test, Y_nottest, Y_test = train_test_split(X, Y, test_size=0.1)
-# X_train, X_val, Y_train, Y_val = train_test_split(X_nottest, Y_nottest, test_size=0.2)
+# X = X.to_numpy()
+# Y = Y.to_numpy()
+# iters = 2000
 
 ## Wine
 # title = "Wine"
 # wine = fetch_ucirepo(id=186)
 # X = wine.data.features
 # Y = wine.data.targets
+# X = X.to_numpy()
+# Y = Y.to_numpy().ravel()
+# iters = 1000
 
 mse_arr = []
 nll_arr = []
+mse_best_itrs = []
+nll_best_itrs = []
 
-splits = 20
-n = X.shape[0]
-np.random.seed(1)
-folds = []
+rounds = 5
+earlyStopping = True
+earlyStoppingType = "NLL"
+plotLast = False
 
-for i in range(splits):
-    permutation = np.random.choice(range(n), n, replace = False)
-    end_train = round(n * 9.0 / 10)
-    end_test = n
+for i in range(rounds):
+    # Split data
+    X_nottest, X_test, y_nottest, y_test = train_test_split(X, Y, test_size=0.1)
+    X_train, X_val, y_train, y_val = train_test_split(X_nottest, y_nottest, test_size=0.2)
 
-    train_index = permutation[0:end_train]
-    test_index = permutation[end_train:n]
-    folds.append((train_index, test_index))
+    ngb = earlyNGBRegressor(n_estimators=iters, learning_rate=0.01, Score=LogScore)
 
-for itr, (train_index, test_index) in enumerate(folds):
+    if not earlyStopping:
+        ngb.fit(X_nottest, y_nottest)
 
-    #X_trainall, X_test = X[train_index], X[test_index]
-    #y_trainall, y_test = Y[train_index], Y[test_index]
+    if earlyStopping:
+        ngb.set_early_stopping(type = earlyStoppingType, early_stopping_rounds = 200)
+        ngb.fit(X_train, y_train, X_val, y_val)
+        
+        #pick the best iteration on the validation set
+        y_preds = ngb.staged_predict(X_val)
+        y_dists = ngb.staged_pred_dist(X_val)
+        val_rmse = [mean_squared_error(y_pred, y_val, squared=False) for y_pred in y_preds]
+        val_nll = [-y_dist.logpdf(y_val.flatten()).mean() for y_dist in y_dists]
+        mse_best_itr = np.argmin(val_rmse)
+        nll_best_itr = np.argmin(val_nll)
 
-    X_trainall, X_test = X.iloc[train_index].values, X.iloc[test_index].values
-    y_trainall, y_test = Y.iloc[train_index].values, Y.iloc[test_index].values
+        # Extra info
+        #print(mse_best_itr)
+        #print(nll_best_itr)
+        #print(ngb.best_val_loss_itr)
+
+    if earlyStopping:
+        ngb = NGBRegressor(n_estimators=ngb.best_val_loss_itr).fit(X_nottest, y_nottest)
+
+    Y_preds = ngb.predict(X_test)
+    Y_dists = ngb.pred_dist(X_test)    
 
 
-    X_train, X_val, y_train, y_val = train_test_split(X_trainall, y_trainall, test_size=0.2)
+    # test Mean Squared Error
+    test_MSE = mean_squared_error(Y_preds, y_test, squared=False)
+    print('Test MSE', test_MSE)
 
-    ngb = NGBRegressor(n_estimators=2000, learning_rate=0.01, Score=LogScore).fit(X_train, y_train, X_val , y_val)
-
-    # pick the best iteration on the validation set
-    y_preds = ngb.staged_predict(X_val)
-    y_forecasts = ngb.staged_pred_dist(X_val)
-
-    val_rmse = [mean_squared_error(y_pred, y_val) for y_pred in y_preds]
-    val_nll = [-y_forecast.logpdf(y_val.flatten()).mean() for y_forecast in y_forecasts]
-    best_itr = np.argmin(val_rmse) + 1
-
-    # re-train using all the data after tuning number of iterations
-    ngb = NGBRegressor(n_estimators=2000, learning_rate=0.01, Score=LogScore).fit(X_trainall, y_trainall)
-
-    # the final prediction for this fold
-    Y_dists = ngb.pred_dist(X_test, max_iter=best_itr)
-
-    test_MSE= np.sqrt(mean_squared_error(Y_dists.mean(), y_test))
-    test_NLL= -Y_dists.logpdf(y_test.flatten()).mean()
+    # test Negative Log Likelihood
+    test_NLL = -Y_dists.logpdf(y_test).mean()
+    print('Test NLL', test_NLL)
 
     mse_arr.append(test_MSE)
     nll_arr.append(test_NLL)
 
+    if earlyStopping:
+        mse_best_itrs.append(mse_best_itr)
+        nll_best_itrs.append(nll_best_itr)
 
-print("MSE average of 20 rounds:", np.mean(mse_arr))
-print("MSE std of 20 rounds:", np.std(mse_arr))
-print("Min MSE:", np.min(mse_arr))
-print("NLL average of 20 rounds:", np.mean(nll_arr))
-print("NLL std of 20 rounds:", np.std(nll_arr))
-print("Min NLL:", np.min(nll_arr))
+print(f"RMSE of {rounds} rounds: ", np.around(np.mean(mse_arr),2), "±", np.around(np.std(mse_arr),2))
+# print(mse_arr)
+print(f"NLL of {rounds} rounds: ", np.around(np.mean(nll_arr),2), "±", np.around(np.std(nll_arr),2))
+# print(nll_arr)
 
-
-
-    
-
-
-# for i in range(20):
-#     X_nottest, X_test, Y_nottest, Y_test = train_test_split(X, Y, test_size=0.1)
-#     X_train, X_val, Y_train, Y_val = train_test_split(X_nottest, Y_nottest, test_size=0.2)
-
-#     # No early stopping
-    
-#     ngb,val_loss_list = NGBRegressor().fit(X_train, Y_train, X_val, Y_val)
-#     Y_preds = ngb.predict(X_test)
-#     Y_dists = ngb.pred_dist(X_test)
-
-#     # Early stopping
-
-#     #ngb,val_loss_list = NGBRegressor(n_estimators=500).fit(X_train, Y_train, X_val, Y_val, early_stopping_rounds=50)
-#     #Y_preds = ngb.predict(X_test, max_iter=ngb.best_val_loss_itr)
-#     #Y_dists = ngb.pred_dist(X_test, max_iter=ngb.best_val_loss_itr)
-#     #print(ngb.best_val_loss_itr)    
-
-
-#     # test Mean Squared Error
-#     test_MSE = mean_squared_error(Y_preds, Y_test)
-#     #print('Test MSE', test_MSE)
-
-#     # test Negative Log Likelihood
-#     test_NLL = -Y_dists.logpdf(Y_test).mean()
-#     #print('Test NLL', test_NLL)
-
-#     mse_arr.append(test_MSE)
-#     nll_arr.append(test_NLL)
-
-# print("MSE average of 20 rounds:", np.mean(mse_arr))
-# print("MSE std of 20 rounds:", np.std(mse_arr))
-# #print(mse_arr)
-# print("NLL average of 20 rounds:", np.mean(nll_arr))
-# print("NLL std of 20 rounds:", np.std(nll_arr))
-# #print(nll_arr)
-
-# plt.plot(range(1, len(val_loss_list)+1), val_loss_list)
-# plt.plot(ngb.best_val_loss_itr, val_loss_list[ngb.best_val_loss_itr - 1], 'ro')
-# plt.xlabel("Iterations")
-# plt.ylabel("Validation Loss")
-# plt.title(title)
-# fig_filename = title+'_3.png'
-# plt.savefig(f'.//images//{fig_filename}')
-# plt.show()
+if plotLast:
+    plotLoss(val_nll, val_rmse, nll_best_itr, mse_best_itr, save=True, title=title)
