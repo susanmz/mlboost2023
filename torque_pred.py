@@ -12,12 +12,12 @@ torque_all_filepath = ".//data//torq_all_K.mat"
 data_all = scipy.io.loadmat(data_all_filepath)
 torque_all = scipy.io.loadmat(torque_all_filepath)
 
-stride_filepaths = [".//data//input_ml.mat", 
+stride_filepaths = [".//data//input_ml_290.mat", 
 ".//data//input_ml_163.mat",
 ".//data//input_ml_161.mat",
 ".//data//input_ml_122.mat",
 ".//data//input_ml_67.mat"]
-torque_filepaths = [".//data//output_ml.mat",
+torque_filepaths = [".//data//output_ml_290.mat",
 ".//data//output_ml_163.mat",
 ".//data//output_ml_161.mat",
 ".//data//output_ml_122.mat",
@@ -61,26 +61,40 @@ Y = train_output_data
 #************** USE STROKE GAIT DATA *******************************###
 stroke_input_data = None
 stroke_output_data = None
+# These are not the averaged 
 stroke_stride_filepaths = [".//data//stroke_input_ml_290.mat", 
-".//data//stroke_input_ml_163.mat"]
+".//data//stroke_input_ml_163.mat",
+".//data//stroke_input_ml_161.mat",
+".//data//stroke_input_ml_122.mat",
+".//data//stroke_input_ml_67.mat"]
 stroke_torque_filepaths = [".//data//stroke_output_ml_290.mat",
-".//data//stroke_output_ml_163.mat"]
+".//data//stroke_output_ml_163.mat",
+".//data//stroke_output_ml_161.mat",
+".//data//stroke_output_ml_122.mat",
+".//data//stroke_output_ml_67.mat"]
 # Load the MATLAB file
-for i in range(len(stroke_stride_filepaths)):
-    input_strides = scipy.io.loadmat(stroke_stride_filepaths[i])
-    output_torque = scipy.io.loadmat(stroke_torque_filepaths[i])
-    stride_data = input_strides['result']
-    torque_data = output_torque['yout']
-    # Smooth torque data
-    smooth_torque_data = low_pass(torque_data[:,0], cutoff=100, fs = 10000, order=3)
-    if stroke_input_data is None:
-        stroke_input_data = stride_data
-        stroke_output_data = smooth_torque_data
-    else:
-        stroke_input_data = np.concatenate((stroke_input_data, stride_data), axis=0)
-        stroke_output_data = np.concatenate((stroke_output_data, smooth_torque_data), axis=0)
-stroke_stride_test = stroke_input_data[:101,:]
-stroke_torque_test = stroke_output_data[:101]
+# for i in range(len(stroke_stride_filepaths)):
+#     input_strides = scipy.io.loadmat(stroke_stride_filepaths[i])
+#     output_torque = scipy.io.loadmat(stroke_torque_filepaths[i])
+#     stride_data = np.mean(input_strides['result'])
+#     torque_data = np.mean(output_torque['yout'])
+#     # Smooth torque data
+#     smooth_torque_data = low_pass(torque_data[:,0], cutoff=100, fs = 10000, order=3)
+#     if stroke_input_data is None:
+#         stroke_input_data = stride_data
+#         stroke_output_data = smooth_torque_data
+#     else:
+#         stroke_input_data = np.concatenate((stroke_input_data, stride_data), axis=0)
+#         stroke_output_data = np.concatenate((stroke_output_data, smooth_torque_data), axis=0)
+
+# This is averaged over all strides for each patient
+stroke_data_all_filepath = ".//data//stroke_input_ml_s290.mat"
+stroke_torque_all_filepath = ".//data//stroke_output_ml_s290.mat"
+stroke_data_all = scipy.io.loadmat(stroke_data_all_filepath)
+stroke_torque_all = scipy.io.loadmat(stroke_torque_all_filepath)
+
+stroke_X_test = stroke_data_all['result']
+stroke_Y_test = stroke_torque_all['yout']
 
 #*******************************************************************##
 
@@ -109,34 +123,28 @@ stroke_torque_test = stroke_output_data[:101]
 
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
-ngb, _ = NGBRegressor(n_estimators=500).fit(X_train, Y_train, X_test, Y_test)
-# ngb, _ = NGBRegressor(n_estimators=1000).fit(X, Y)
-# Y_preds = ngb.predict(X_test)
-# Y_dists = ngb.pred_dist(X_test)
+ngb, val_list = NGBRegressor(n_estimators=1000).fit(X_train, Y_train, X_test, Y_test)
+Npoints = 101
+norm_percent  = np.linspace(0,100,Npoints)
+Y_preds = ngb.predict(stroke_X_test)
+Y_dists = ngb.pred_dist(stroke_X_test)
 
-# # test Mean Squared Error
-# test_MSE = mean_squared_error(Y_preds, Y_test)
-# print('Test MSE', test_MSE)
+# test Mean Squared Error
+test_MSE = mean_squared_error(Y_preds, stroke_Y_test, squared=False)
+print('Test MSE', test_MSE)
 
-# # test Negative Log Likelihood
-# test_NLL = -Y_dists.logpdf(Y_test).mean()
-# print('Test NLL', test_NLL)
+for i in range(-Y_dists.logpdf(stroke_Y_test).shape[1]):
+    plt.plot(-Y_dists.logpdf(stroke_Y_test)[:,i])
 
-# plt.plot(Y_preds)
-# plt.show()
+# test Negative Log Likelihood
+test_NLL = -Y_dists.logpdf(stroke_Y_test).mean()
+print('Test NLL', test_NLL)
 
-# subj1_Y_preds = ngb.predict(subj1X_test, max_iter=ngb.best_val_loss_itr)
-# subj1_Y_preds = ngb.predict(stride_test)
-# plt.plot(subj1_Y_preds)
-# plt.plot(torque_test)
-# plt.show()
+plt.plot(val_list)
+plt.show()
 
-# subj1_Y_preds = ngb.predict(subj1X_test)
-# plt.plot(subj1_Y_preds)
-# plt.plot(subj1Y_test)
-# plt.show()
-
-subj1_Y_preds = ngb.predict(stroke_stride_test)
-plt.plot(subj1_Y_preds)
-plt.plot(stroke_torque_test)
+plt.plot(norm_percent, Y_preds)
+plt.plot(norm_percent, stroke_Y_test)
+plt.xlabel('% Gait Cycle')
+plt.ylabel('Torque (Nm/kg)')
 plt.show()
