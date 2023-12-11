@@ -55,12 +55,32 @@ for i in range(len(stride_filepaths)):
 # torque_test = train_output_data[:101]
 # X = train_input_data[101:,:]
 # Y = train_output_data[101:]
+X = train_input_data
+Y = train_output_data
 
 #************** USE STROKE GAIT DATA *******************************###
-# stride_test = 
-# torque_test = 
-# X = train_input_data
-# Y = train_output_data
+stroke_input_data = None
+stroke_output_data = None
+stroke_stride_filepaths = [".//data//stroke_input_ml_290.mat", 
+".//data//stroke_input_ml_163.mat"]
+stroke_torque_filepaths = [".//data//stroke_output_ml_290.mat",
+".//data//stroke_output_ml_163.mat"]
+# Load the MATLAB file
+for i in range(len(stroke_stride_filepaths)):
+    input_strides = scipy.io.loadmat(stroke_stride_filepaths[i])
+    output_torque = scipy.io.loadmat(stroke_torque_filepaths[i])
+    stride_data = input_strides['result']
+    torque_data = output_torque['yout']
+    # Smooth torque data
+    smooth_torque_data = low_pass(torque_data[:,0], cutoff=100, fs = 10000, order=3)
+    if stroke_input_data is None:
+        stroke_input_data = stride_data
+        stroke_output_data = smooth_torque_data
+    else:
+        stroke_input_data = np.concatenate((stroke_input_data, stride_data), axis=0)
+        stroke_output_data = np.concatenate((stroke_output_data, smooth_torque_data), axis=0)
+stroke_stride_test = stroke_input_data[:101,:]
+stroke_torque_test = stroke_output_data[:101]
 
 #*******************************************************************##
 
@@ -106,12 +126,17 @@ ngb, _ = NGBRegressor(n_estimators=500).fit(X_train, Y_train, X_test, Y_test)
 # plt.show()
 
 # subj1_Y_preds = ngb.predict(subj1X_test, max_iter=ngb.best_val_loss_itr)
-subj1_Y_preds = ngb.predict(stride_test)
-plt.plot(subj1_Y_preds)
-plt.plot(torque_test)
-plt.show()
+# subj1_Y_preds = ngb.predict(stride_test)
+# plt.plot(subj1_Y_preds)
+# plt.plot(torque_test)
+# plt.show()
 
-subj1_Y_preds = ngb.predict(subj1X_test)
+# subj1_Y_preds = ngb.predict(subj1X_test)
+# plt.plot(subj1_Y_preds)
+# plt.plot(subj1Y_test)
+# plt.show()
+
+subj1_Y_preds = ngb.predict(stroke_stride_test)
 plt.plot(subj1_Y_preds)
-plt.plot(subj1Y_test)
+plt.plot(stroke_torque_test)
 plt.show()
