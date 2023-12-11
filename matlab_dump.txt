@@ -1,9 +1,5 @@
-grf = right_output_ml.R_GRF;
-grf = right_output_ml.R_GRF{1,1};
-grf = grf';
-grf_flat = grf(:);
+grf = right_output_ml.R_GRF{1,1}; grf = grf';grf_flat = grf(:);
 ank = right_output_ml.R_Ankle_Angles{1,1}; ank = ank'; ank_flat = ank(:);
-ank1 = right_output_ml.R_Shanke_Angle{1,1}; ank1 = ank1'; ank_flat1 = ank1(:);
 ank1 = right_output_ml.R_Shank_Angle{1,1}; ank1 = ank1'; ank_flat1 = ank1(:);
 ank2 = right_output_ml.R_Ankle_Vel{1,1}; ank2 = ank2'; ank_flat2 = ank2(:);
 ank3 = right_output_ml.R_Shank_Vel{1,1}; ank3 = ank3'; ank_flat3 = ank3(:);
@@ -11,9 +7,23 @@ ank4 = right_output_ml.R_Phi{1,1}; ank4 = ank4'; ank_flat4 = ank4(:);
 ank5 = right_output_ml.R_IMU_Vel{1,1}; ank5 = ank5'; ank_flat5 = ank5(:);
 ank6 = right_output_ml.R_Ankle_COP{1,1}; ank6 = ank6'; ank_flat6 = ank6(:);
 yout = right_output_ml.R_Ankle_Torque{1,1}; yout=yout'; yout=yout(:);
-result = [grf_flat, ank, ank1, ank2, ank3, ank4, ank5, ank6];
-result = [grf_flat, ank_flat, ank1_flat, ank2_flat, ank3_flat, ank4_flat, ank5_flat, ank6_flat];
 result = [grf_flat, ank_flat, ank_flat1, ank_flat2, ank_flat3, ank_flat4, ank_flat5, ank_flat6];
 save('input_ml', 'result')
 save('output_ml', 'yout')
 figure;plot(yout(1:101,1))
+
+grf = left_output_ml.L_GRF{1,1}; grf = grf';grf_flat = grf(:);
+ank = left_output_ml.L_Ankle_Angles{1,1}; ank = ank'; ank_flat = ank(:);
+ank1 = left_output_ml.L_Shank_Angle{1,1}; ank1 = ank1'; ank_flat1 = ank1(:);
+ank2 = left_output_ml.L_Ankle_Vel{1,1}; ank2 = ank2'; ank_flat2 = ank2(:);
+ank3 = left_output_ml.L_Shank_Vel{1,1}; ank3 = ank3'; ank_flat3 = ank3(:);
+ank4 = left_output_ml.L_Phi{1,1}; ank4 = ank4'; ank_flat4 = ank4(:);
+ank5 = left_output_ml.L_IMU_Vel{1,1}; ank5 = ank5'; ank_flat5 = ank5(:);
+ank6 = left_output_ml.L_Ankle_COP{1,1}; ank6 = ank6'; ank_flat6 = ank6(:);
+yout = left_output_ml.L_Ankle_Torque{1,1}; yout=yout'; yout=yout(:);
+result = [grf_flat, ank_flat, ank_flat1, ank_flat2, ank_flat3, ank_flat4, ank_flat5, ank_flat6];
+save('input_ml_163', 'result')
+save('output_ml_163', 'yout')
+figure;plot(yout(1:101,1))
+
+GRF, Ankle Angle, Shank Angle, Ankle Vel, Shank Vel, Phi, IMU_Vel, Ankle COP, Ankle Torque
