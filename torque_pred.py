@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
+from scipy.signal import butter, filtfilt
 
 data_all_filepath = ".//data//data_all_K.mat"
 torque_all_filepath = ".//data//torq_all_K.mat"
@@ -22,8 +23,6 @@ torque_filepaths = [".//data//output_ml_290.mat",
 ".//data//output_ml_161.mat",
 ".//data//output_ml_122.mat",
 ".//data//output_ml_67.mat"]
-
-from scipy.signal import butter, filtfilt
 
 # Butterworth filter for torque trajectory smoothing
 # 3rd order with cutoff frequency of 100Hz
@@ -123,28 +122,11 @@ stroke_Y_test = stroke_torque_all['yout']
 
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
-ngb, val_list = NGBRegressor(n_estimators=1000).fit(X_train, Y_train, X_test, Y_test)
-Npoints = 101
-norm_percent  = np.linspace(0,100,Npoints)
-Y_preds = ngb.predict(stroke_X_test)
-Y_dists = ngb.pred_dist(stroke_X_test)
+ngb, val_list = NGBRegressor(n_estimators=500).fit(X_train, Y_train, X_test, Y_test)
+import pickle
+from pathlib import Path
 
-# test Mean Squared Error
-test_MSE = mean_squared_error(Y_preds, stroke_Y_test, squared=False)
-print('Test MSE', test_MSE)
+file_path = Path.home()/'Documents'/'_UM'/'23Fall'/'EECS553'/'mlboost2023'/'ngbtest_4.p'
 
-for i in range(-Y_dists.logpdf(stroke_Y_test).shape[1]):
-    plt.plot(-Y_dists.logpdf(stroke_Y_test)[:,i])
-
-# test Negative Log Likelihood
-test_NLL = -Y_dists.logpdf(stroke_Y_test).mean()
-print('Test NLL', test_NLL)
-
-plt.plot(val_list)
-plt.show()
-
-plt.plot(norm_percent, Y_preds)
-plt.plot(norm_percent, stroke_Y_test)
-plt.xlabel('% Gait Cycle')
-plt.ylabel('Torque (Nm/kg)')
-plt.show()
+with file_path.open("wb") as f:
+    pickle.dump(ngb, f)
